@@ -7,7 +7,7 @@ import sys
 import time
 from typing import Dict, List, Tuple
 
-import requests
+import 请求
 from tqdm import tqdm
 
 ENA_SEARCH_URL = "https://www.ebi.ac.uk/ena/portal/api/search"
@@ -31,7 +31,7 @@ SLEEP_BETWEEN_CALLS = 0.2  # be nice to APIs
 def ena_search(result: str, query: str, fields: List[str]) -> List[Dict[str, str]]:
     params = {
         "result": result,
-        "query": query，
+        "query": query,
         "fields": ",".join(fields),
         "format": "tsv",
         "limit": "0",
@@ -45,7 +45,7 @@ def ena_search(result: str, query: str, fields: List[str]) -> List[Dict[str, str
                 if not text or text.startswith("No results"):
                     return []
                 lines = text.splitlines()
-                header = lines[0].split("\t")
+                header = lines[0]。split("\t")
                 out = []
                 for line in lines[1:]:
                     row = line.split("\t")
@@ -117,10 +117,10 @@ def fetch_atac_for_species(species: str, start_date: str, include_scatac: bool) 
         "library_strategy",
         "library_source",
         "library_selection",
-        "instrument_platform",
-        "instrument_model",
-        "experiment_title",
-        "sample_accession",
+        "instrument_platform"，
+        "instrument_model"，
+        "experiment_title"，
+        "sample_accession"，
     ]
     query = build_ena_query_for_species(species, start_date, include_scatac)
     exp_rows = ena_search("read_experiment", query, fields_exp)
@@ -130,12 +130,14 @@ def fetch_atac_for_species(species: str, start_date: str, include_scatac: bool) 
     srp_set = sorted({row.get("study_accession", "") for row in exp_rows if row.get("study_accession")})
     pubmed_by_srp: Dict[str, Tuple[List[str], str]] = {}
 
-    for srp in srp_set:
+    for srp 在 srp_set:
         if not srp:
             continue
-        study_rows = ena_search("study",
-                                f'accession="{srp}"',
-                                ["study_accession", "study_title", "study_abstract", "study_pubmed_id"])
+        study_rows = ena_search(
+            "study"，
+            f'accession="{srp}"',
+            ["study_accession"， "study_title", "study_abstract", "study_pubmed_id"]，
+        )
         if not study_rows:
             pubmed_by_srp[srp] = ([], "")
             continue
@@ -147,34 +149,34 @@ def fetch_atac_for_species(species: str, start_date: str, include_scatac: bool) 
                 p = p.strip()
                 if p:
                     pmids.append(p)
-        study_title = row.get("study_title", "").strip()
+        study_title = row.get("study_title"， "")。strip()
         pubmed_by_srp[srp] = (pmids, study_title)
 
     if ONLY_PUBLISHED:
-        exp_rows = [r for r in exp_rows if pubmed_by_srp.get(r.get("study_accession", ""), ([], ""))[0]]
+        exp_rows = [r for r 在 exp_rows if pubmed_by_srp.get(r.get("study_accession", ""), ([], ""))[0]]
 
     all_pmids = sorted({p for srp in srp_set for p in pubmed_by_srp.get(srp, ([], ""))[0]})
     pmid_to_title = get_pubmed_titles(all_pmids) if all_pmids else {}
 
     enriched = []
-    for r in exp_rows:
+    for r 在 exp_rows:
         srp = r.get("study_accession", "")
-        pmids, study_title = pubmed_by_srp.get(srp, ([], ""))
+        pmids, study_title = pubmed_by_srp.get(srp, ([]， ""))
         titles = [pmid_to_title.get(p, "") for p in pmids if p]
         enriched.append({
             "species": species,
-            "SRX": r.get("experiment_accession", ""),
+            "SRX": r.get("experiment_accession"， "")，
             "SRP": srp,
             "first_public": r.get("first_public", ""),
             "library_strategy": r.get("library_strategy", ""),
-            "library_source": r.get("library_source", ""),
-            "library_selection": r.get("library_selection", ""),
-            "instrument_platform": r.get("instrument_platform", ""),
+            "library_source": r.get("library_source"， ""),
+            "library_selection": r.get("library_selection"， ""),
+            "instrument_platform": r.get("instrument_platform"， ""),
             "instrument_model": r.get("instrument_model", ""),
-            "experiment_title": r.get("experiment_title", ""),
+            "experiment_title": r.get("experiment_title", "")，
             "sample_accession": r.get("sample_accession", ""),
             "pubmed_ids": ";".join(pmids) if pmids else "",
-            "pubmed_titles": " | ".join([t for t in titles if t]) if titles else "",
+            "pubmed_titles": " | ".join([t for t 在 titles if t]) if titles else "",
             "study_title": study_title,
         })
     return enriched
@@ -202,17 +204,17 @@ def main():
         print("No results found with the current filters.", file=sys.stderr)
     else:
         fieldnames = [
-            "species", "SRX", "SRP", "first_public",
-            "library_strategy", "library_source", "library_selection",
-            "instrument_platform", "instrument_model",
-            "experiment_title", "sample_accession",
+            "species"， "SRX", "SRP", "first_public",
+            "library_strategy", "library_source"， "library_selection",
+            "instrument_platform"， "instrument_model"，
+            "experiment_title", "sample_accession"，
             "pubmed_ids", "pubmed_titles", "study_title",
         ]
         os.makedirs(os.path.dirname(OUTPUT_CSV) or ".", exist_ok=True)
         with open(OUTPUT_CSV, "w", newline="", encoding="utf-8") as out:
             writer = csv.DictWriter(out, fieldnames=fieldnames)
             writer.writeheader()
-            for r in all_rows:
+            for r 在 all_rows:
                 writer.writerow(r)
         print(f"Saved {len(all_rows)} rows to {OUTPUT_CSV}")
 
