@@ -14,9 +14,9 @@ ENA_SEARCH_URL = "https://www.ebi.ac.uk/ena/portal/api/search"
 PUBMED_ESUMMARY_URL = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esummary.fcgi"
 
 # Defaults (可用环境变量覆盖)
-DEFAULT_START_DATE = os.environ.get("ATAC_START_DATE"， "2022-01-01")  # inclusive
-INCLUDE_SCATAC = os.environ.get("INCLUDE_SCATAC"， "true").lower() in ("1"， "true"， "yes")
-ONLY_PUBLISHED = os.environ.get("ONLY_PUBLISHED", "true").lower() in ("1", "true"， "yes")
+DEFAULT_START_DATE = os.environ.get("ATAC_START_DATE", "2022-01-01")  # inclusive
+INCLUDE_SCATAC = os.environ.get("INCLUDE_SCATAC", "true").lower() in ("1", "true", "yes")
+ONLY_PUBLISHED = os.environ.get("ONLY_PUBLISHED", "true").lower() in ("1", "true", "yes")
 EMAIL_FOR_NCBI = os.environ.get("NCBI_EMAIL", "")       # optional but recommended
 NCBI_API_KEY = os.environ.get("NCBI_API_KEY", "")       # optional, increases rate limits
 OUTPUT_CSV = os.environ.get("OUTPUT_CSV", "out/atac_srx_with_pubmed.csv")
@@ -28,25 +28,25 @@ RETRY = 3
 SLEEP_BETWEEN_CALLS = 0.2  # be nice to APIs
 
 
-def ena_search(result: str， query: str， fields: List[str]) -> List[Dict[str, str]]:
+def ena_search(result: str, query: str, fields: List[str]) -> List[Dict[str, str]]:
     params = {
-        "result": result，
-        "query": query，
+        "result": result,
+        "query": query,
         "fields": ",".join(fields),
         "format": "tsv",
         "limit": "0",
     }
-    last_err = 无
+    last_err = None
     for _ in range(RETRY):
         try:
-            r = requests.get(ENA_SEARCH_URL， params=params， timeout=TIMEOUT)
+            r = requests.get(ENA_SEARCH_URL, params=params, timeout=TIMEOUT)
             if r.status_code == 200:
                 text = r.text.strip()
                 if not text or text.startswith("No results"):
                     return []
                 lines = text.splitlines()
                 header = lines[0].split("\t")
-                out = []
+                out: List[Dict[str, str]] = []
                 for line in lines[1:]:
                     row = line.split("\t")
                     out.append({header[i]: (row[i] if i < len(row) else "") for i in range(len(header))})
@@ -74,16 +74,16 @@ def get_pubmed_titles(pmids: List[str]) -> Dict[str, str]:
     if NCBI_API_KEY:
         params["api_key"] = NCBI_API_KEY
 
-    last_err = 无
+    last_err = None
     for _ in range(RETRY):
         try:
-            r = requests.get(PUBMED_ESUMMARY_URL， params=params， timeout=TIMEOUT)
+            r = requests.get(PUBMED_ESUMMARY_URL, params=params, timeout=TIMEOUT)
             if r.status_code == 200:
                 data = r.json()
                 result = data.get("result", {})
-                titles = {}
+                titles: Dict[str, str] = {}
                 for uid in result.get("uids", []):
-                    item = result.get(uid， {})
+                    item = result.get(uid, {})
                     title = item.get("title", "")
                     titles[uid] = title
                 time.sleep(SLEEP_BETWEEN_CALLS)
@@ -96,10 +96,10 @@ def get_pubmed_titles(pmids: List[str]) -> Dict[str, str]:
     raise RuntimeError(f"PubMed esummary failed: {last_err}")
 
 
-def build_ena_query_for_species(species: str， start_date: str， include_scatac: bool) -> str:
+def build_ena_query_for_species(species: str, start_date: str, include_scatac: bool) -> str:
     parts = [
         f'tax_eq("{species}")',
-        'library_strategy="ATAC-seq"'，
+        'library_strategy="ATAC-seq"',
         f'first_public>={start_date}',
     ]
     # 如需更宽松包含 scATAC 关键词，可放开下行：
@@ -117,10 +117,10 @@ def fetch_atac_for_species(species: str, start_date: str, include_scatac: bool) 
         "library_strategy",
         "library_source",
         "library_selection",
-        "instrument_platform",
-        "instrument_model",
-        "experiment_title",
-        "sample_accession",
+        "instrument_platform"，
+        "instrument_model"，
+        "experiment_title"，
+        "sample_accession"，
     ]
     query = build_ena_query_for_species(species, start_date, include_scatac)
     exp_rows = ena_search("read_experiment", query, fields_exp)
@@ -143,7 +143,7 @@ def fetch_atac_for_species(species: str, start_date: str, include_scatac: bool) 
             continue
         row = study_rows[0]
         pmids_raw = row.get("study_pubmed_id", "").strip()
-        pmids = []
+        pmids: List[str] = []
         if pmids_raw:
             for p in pmids_raw.replace(",", ";").split(";"):
                 p = p.strip()
@@ -153,13 +153,13 @@ def fetch_atac_for_species(species: str, start_date: str, include_scatac: bool) 
         pubmed_by_srp[srp] = (pmids, study_title)
 
     if ONLY_PUBLISHED:
-        exp_rows = [r for r 在 exp_rows if pubmed_by_srp.get(r.get("study_accession", ""), ([], ""))[0]]
+        exp_rows = [r for r in exp_rows if pubmed_by_srp.get(r.get("study_accession", ""), ([], ""))[0]]
 
     all_pmids = sorted({p for srp in srp_set for p in pubmed_by_srp.get(srp, ([], ""))[0]})
     pmid_to_title = get_pubmed_titles(all_pmids) if all_pmids else {}
 
-    enriched = []
-    for r 在 exp_rows:
+    enriched: List[Dict[str, str]] = []
+    for r in exp_rows:
         srp = r.get("study_accession", "")
         pmids, study_title = pubmed_by_srp.get(srp, ([], ""))
         titles = [pmid_to_title.get(p, "") for p in pmids if p]
@@ -176,7 +176,7 @@ def fetch_atac_for_species(species: str, start_date: str, include_scatac: bool) 
             "experiment_title": r.get("experiment_title", ""),
             "sample_accession": r.get("sample_accession", ""),
             "pubmed_ids": ";".join(pmids) if pmids else "",
-            "pubmed_titles": " | ".join([t for t 在 titles if t]) if titles else "",
+            "pubmed_titles": " | ".join([t for t in titles if t]) if titles else "",
             "study_title": study_title,
         })
     return enriched
@@ -214,7 +214,7 @@ def main():
         with open(OUTPUT_CSV, "w", newline="", encoding="utf-8") as out:
             writer = csv.DictWriter(out, fieldnames=fieldnames)
             writer.writeheader()
-            for r 在 all_rows:
+            for r in all_rows:
                 writer.writerow(r)
         print(f"Saved {len(all_rows)} rows to {OUTPUT_CSV}")
 
