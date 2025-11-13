@@ -14,9 +14,9 @@ ENA_SEARCH_URL = "https://www.ebi.ac.uk/ena/portal/api/search"
 PUBMED_ESUMMARY_URL = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esummary.fcgi"
 
 # Defaults (可用环境变量覆盖)
-DEFAULT_START_DATE = os.environ.get("ATAC_START_DATE", "2022-01-01")  # inclusive
-INCLUDE_SCATAC = os.environ.get("INCLUDE_SCATAC", "true").lower() in ("1", "true", "yes")
-ONLY_PUBLISHED = os.environ.get("ONLY_PUBLISHED", "true").lower() in ("1", "true", "yes")
+DEFAULT_START_DATE = os.environ.get("ATAC_START_DATE"， "2022-01-01")  # inclusive
+INCLUDE_SCATAC = os.environ.get("INCLUDE_SCATAC"， "true").lower() in ("1"， "true"， "yes")
+ONLY_PUBLISHED = os.environ.get("ONLY_PUBLISHED", "true").lower() in ("1", "true"， "yes")
 EMAIL_FOR_NCBI = os.environ.get("NCBI_EMAIL", "")       # optional but recommended
 NCBI_API_KEY = os.environ.get("NCBI_API_KEY", "")       # optional, increases rate limits
 OUTPUT_CSV = os.environ.get("OUTPUT_CSV", "out/atac_srx_with_pubmed.csv")
@@ -28,18 +28,18 @@ RETRY = 3
 SLEEP_BETWEEN_CALLS = 0.2  # be nice to APIs
 
 
-def ena_search(result: str, query: str, fields: List[str]) -> List[Dict[str, str]]:
+def ena_search(result: str， query: str， fields: List[str]) -> List[Dict[str, str]]:
     params = {
-        "result": result,
-        "query": query,
+        "result": result，
+        "query": query，
         "fields": ",".join(fields),
         "format": "tsv",
         "limit": "0",
     }
-    last_err = None
+    last_err = 无
     for _ in range(RETRY):
         try:
-            r = requests.get(ENA_SEARCH_URL, params=params, timeout=TIMEOUT)
+            r = requests.get(ENA_SEARCH_URL， params=params， timeout=TIMEOUT)
             if r.status_code == 200:
                 text = r.text.strip()
                 if not text or text.startswith("No results"):
@@ -74,16 +74,16 @@ def get_pubmed_titles(pmids: List[str]) -> Dict[str, str]:
     if NCBI_API_KEY:
         params["api_key"] = NCBI_API_KEY
 
-    last_err = None
+    last_err = 无
     for _ in range(RETRY):
         try:
-            r = requests.get(PUBMED_ESUMMARY_URL, params=params, timeout=TIMEOUT)
+            r = requests.get(PUBMED_ESUMMARY_URL， params=params， timeout=TIMEOUT)
             if r.status_code == 200:
                 data = r.json()
                 result = data.get("result", {})
                 titles = {}
                 for uid in result.get("uids", []):
-                    item = result.get(uid, {})
+                    item = result.get(uid， {})
                     title = item.get("title", "")
                     titles[uid] = title
                 time.sleep(SLEEP_BETWEEN_CALLS)
@@ -96,10 +96,10 @@ def get_pubmed_titles(pmids: List[str]) -> Dict[str, str]:
     raise RuntimeError(f"PubMed esummary failed: {last_err}")
 
 
-def build_ena_query_for_species(species: str, start_date: str, include_scatac: bool) -> str:
+def build_ena_query_for_species(species: str， start_date: str， include_scatac: bool) -> str:
     parts = [
         f'tax_eq("{species}")',
-        'library_strategy="ATAC-seq"',
+        'library_strategy="ATAC-seq"'，
         f'first_public>={start_date}',
     ]
     # 如需更宽松包含 scATAC 关键词，可放开下行：
@@ -117,10 +117,10 @@ def fetch_atac_for_species(species: str, start_date: str, include_scatac: bool) 
         "library_strategy",
         "library_source",
         "library_selection",
-        "instrument_platform"，
-        "instrument_model"，
-        "experiment_title"，
-        "sample_accession"，
+        "instrument_platform",
+        "instrument_model",
+        "experiment_title",
+        "sample_accession",
     ]
     query = build_ena_query_for_species(species, start_date, include_scatac)
     exp_rows = ena_search("read_experiment", query, fields_exp)
@@ -134,9 +134,9 @@ def fetch_atac_for_species(species: str, start_date: str, include_scatac: bool) 
         if not srp:
             continue
         study_rows = ena_search(
-            "study"，
+            "study",
             f'accession="{srp}"',
-            ["study_accession"， "study_title", "study_abstract", "study_pubmed_id"]，
+            ["study_accession", "study_title", "study_abstract", "study_pubmed_id"],
         )
         if not study_rows:
             pubmed_by_srp[srp] = ([], "")
@@ -149,7 +149,7 @@ def fetch_atac_for_species(species: str, start_date: str, include_scatac: bool) 
                 p = p.strip()
                 if p:
                     pmids.append(p)
-        study_title = row.get("study_title"， "").strip()
+        study_title = row.get("study_title", "").strip()
         pubmed_by_srp[srp] = (pmids, study_title)
 
     if ONLY_PUBLISHED:
@@ -165,15 +165,15 @@ def fetch_atac_for_species(species: str, start_date: str, include_scatac: bool) 
         titles = [pmid_to_title.get(p, "") for p in pmids if p]
         enriched.append({
             "species": species,
-            "SRX": r.get("experiment_accession"， "")，
+            "SRX": r.get("experiment_accession", ""),
             "SRP": srp,
             "first_public": r.get("first_public", ""),
             "library_strategy": r.get("library_strategy", ""),
-            "library_source": r.get("library_source"， ""),
-            "library_selection": r.get("library_selection"， ""),
-            "instrument_platform": r.get("instrument_platform"， ""),
+            "library_source": r.get("library_source", ""),
+            "library_selection": r.get("library_selection", ""),
+            "instrument_platform": r.get("instrument_platform", ""),
             "instrument_model": r.get("instrument_model", ""),
-            "experiment_title": r.get("experiment_title", "")，
+            "experiment_title": r.get("experiment_title", ""),
             "sample_accession": r.get("sample_accession", ""),
             "pubmed_ids": ";".join(pmids) if pmids else "",
             "pubmed_titles": " | ".join([t for t 在 titles if t]) if titles else "",
@@ -204,10 +204,10 @@ def main():
         print("No results found with the current filters.", file=sys.stderr)
     else:
         fieldnames = [
-            "species"， "SRX", "SRP", "first_public",
-            "library_strategy", "library_source"， "library_selection",
-            "instrument_platform"， "instrument_model"，
-            "experiment_title", "sample_accession"，
+            "species", "SRX", "SRP", "first_public",
+            "library_strategy", "library_source", "library_selection",
+            "instrument_platform", "instrument_model",
+            "experiment_title", "sample_accession",
             "pubmed_ids", "pubmed_titles", "study_title",
         ]
         os.makedirs(os.path.dirname(OUTPUT_CSV) or ".", exist_ok=True)
