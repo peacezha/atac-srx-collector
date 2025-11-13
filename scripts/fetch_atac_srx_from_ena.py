@@ -45,7 +45,7 @@ def ena_search(result: str, query: str, fields: List[str]) -> List[Dict[str, str
                 if not text or text.startswith("No results"):
                     return []
                 lines = text.splitlines()
-                header = lines[0]。split("\t")
+                header = lines[0].split("\t")
                 out = []
                 for line in lines[1:]:
                     row = line.split("\t")
@@ -161,7 +161,7 @@ def fetch_atac_for_species(species: str, start_date: str, include_scatac: bool) 
     enriched = []
     for r 在 exp_rows:
         srp = r.get("study_accession", "")
-        pmids, study_title = pubmed_by_srp.get(srp, ([]， ""))
+        pmids, study_title = pubmed_by_srp.get(srp, ([], ""))
         titles = [pmid_to_title.get(p, "") for p in pmids if p]
         enriched.append({
             "species": species,
