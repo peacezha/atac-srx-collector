@@ -149,7 +149,7 @@ def fetch_atac_for_species(species: str, start_date: str, include_scatac: bool) 
                 p = p.strip()
                 if p:
                     pmids.append(p)
-        study_title = row.get("study_title"， "")。strip()
+        study_title = row.get("study_title"， "").strip()
         pubmed_by_srp[srp] = (pmids, study_title)
 
     if ONLY_PUBLISHED:
